@@ -1,0 +1,1 @@
+web: java -jar build/libs/micronautbase-0.1-all.jar -Dmicronaut.server.port=$PORT

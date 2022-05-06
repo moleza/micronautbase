@@ -1,0 +1,42 @@
+micronaut:
+    server:
+        host: 0.0.0.0
+        cors:
+            enabled: true
+    application:
+        name: micronautbase
+        secretKey: ChangeSecretKey!
+        secretSalt: ChangeSecretSalt!@
+    security:
+        reject-not-found: true
+        enabled: true
+        authentication: bearer
+        token:
+            jwt:
+                # generator:
+                #     refresh-token:
+                #         secret: "ChangeThisSecret"
+                signatures:
+                    secret:
+                        generator:
+                            secret: "AA5!de$#wNXS4U214vH439ohViDqf9B7Fbh&TGkgjQfz9$R&y5f&F4PIxh8rW&2m"
+                            jws-algorithm: HS256
+
+netty:
+    default:
+        allocator:
+            max-order: 3
+
+# JSON Dates
+jackson:
+    serialization:
+        writeDatesAsTimestamps: false
+
+# Datasource
+datasources:
+    default:
+        driverClassName: ${DATABASE_DRIVER:com.mysql.cj.jdbc.Driver}
+        url: ${DATABASE_URL:`jdbc:mysql://localhost:3306/base`}
+        username: ${DATABASE_USERNAME:root}
+        password: ${DATABASE_PASSWORD:root}
+        schema-generate: CREATE
