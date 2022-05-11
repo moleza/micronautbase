@@ -50,6 +50,7 @@ dependencies {
     runtimeOnly("mysql:mysql-connector-java")
 
     testRuntimeOnly("org.testcontainers:mysql")
+    compileOnly("org.graalvm.nativeimage:svm")
     
 }
 

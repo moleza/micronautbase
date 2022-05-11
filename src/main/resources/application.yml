@@ -5,8 +5,8 @@ micronaut:
             enabled: true
     application:
         name: micronautbase
-        secretKey: ChangeSecretKey!
-        secretSalt: ChangeSecretSalt!@
+        secretKey: ${SECRET_KEY:`ChangeSecretKey!`}
+        secretSalt: ${SECRET_SALT:`ChangeSecretSalt!@`}
     security:
         reject-not-found: true
         enabled: true
@@ -15,11 +15,11 @@ micronaut:
             jwt:
                 # generator:
                 #     refresh-token:
-                #         secret: "ChangeThisSecret"
+                #         secret: ${JWT_SECRET_REFRESH:`ChangeThisSecret`}
                 signatures:
                     secret:
                         generator:
-                            secret: "AA5!de$#wNXS4U214vH439ohViDqf9B7Fbh&TGkgjQfz9$R&y5f&F4PIxh8rW&2m"
+                            secret: ${JWT_SECRET:`AA5!de$#wNXS4U214vH439ohViDqf9B7Fbh&TGkgjQfz9$R&y5f&F4PIxh8rW&2m`}
                             jws-algorithm: HS256
 
 netty:
@@ -39,5 +39,5 @@ datasources:
         url: ${DATABASE_URL:`jdbc:mysql://localhost:3306/base`}
         username: ${DATABASE_USERNAME:root}
         password: ${DATABASE_PASSWORD:root}
-        schema-generate: CREATE
-        dialect: MYSQL
+        schema-generate: ${DATABASE_GENERATE:CREATE}
+        dialect: ${DATABASE_DIALECT:MYSQL}
