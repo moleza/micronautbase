@@ -14,6 +14,7 @@ import io.micronaut.data.repository.CrudRepository;
 @JdbcRepository(dialect = Dialect.MYSQL)
 public interface UserRepository extends CrudRepository<User, Long> {
     Optional<User> findByEmailAndPasswordAndEnabled(String email, String password, Boolean enabled);
+    Optional<User> findByEmailAndEnabledAndLevelIsNotNull(String email, Boolean enabled);
     UserDTO findByEmailAndEnabled(String email, Boolean enabled);
     Page<User> findAll(Pageable pageable);
     Optional<User> findByEmail(String email);

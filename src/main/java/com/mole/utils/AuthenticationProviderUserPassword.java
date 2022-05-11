@@ -9,8 +9,9 @@ import com.mole.entity.User;
 import com.mole.repository.UserRepository;
 
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import io.micronaut.context.annotation.Value;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.security.authentication.AuthenticationException;
 import io.micronaut.security.authentication.AuthenticationFailed;
@@ -30,32 +31,31 @@ public class AuthenticationProviderUserPassword implements AuthenticationProvide
 
     @Inject
     private final UserRepository userRepo;
-    @Value("${micronaut.application.secretKey}")
-    private static String key;
-    @Value("${micronaut.application.secretSalt}")
-    private static String salt;
-
-    // private static final Logger log = LoggerFactory.getLogger(AuthenticationProviderUserPassword.class);
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationProviderUserPassword.class);
 
     @Override
     public Publisher<AuthenticationResponse> authenticate(@Nullable HttpRequest<?> httpRequest, AuthenticationRequest<?, ?> authenticationRequest) {
         return Flowable.create(emitter -> {
-            Optional<User> user = userRepo.findByEmailAndPasswordAndEnabled(authenticationRequest.getIdentity().toString(), Aes256.encrypt(authenticationRequest.getSecret().toString(),key,salt), true);
+            Optional<User> user = userRepo.findByEmailAndEnabledAndLevelIsNotNull(authenticationRequest.getIdentity().toString(), true);
             if (user.isPresent()) {
                 User user_ = user.get();
-                List<String> roles = new ArrayList<String>();
-                if (user_.getLevel() == 100) {
-                    roles = Arrays.asList("ADMIN");
-                } else if (user_.getLevel() == 11) {
-                    roles = Arrays.asList("BUSINESS");
-                } else if (user_.getLevel() == 1) {
-                    roles = Arrays.asList("USER");
-                }
-                if (roles.size() == 0) {
-                    emitter.onError(new AuthenticationException(new AuthenticationFailed()));
+                if (Argon2Encode.verify(user_.getPassword(),authenticationRequest.getSecret().toString())) {
+                    List<String> roles = new ArrayList<String>();
+                    if (user_.getLevel() == 100) {
+                        roles = Arrays.asList("ADMIN");
+                    } else if (user_.getLevel() == 11) {
+                        roles = Arrays.asList("BUSINESS");
+                    } else if (user_.getLevel() == 1) {
+                        roles = Arrays.asList("USER");
+                    }
+                    if (roles.size() == 0) {
+                        emitter.onError(new AuthenticationException(new AuthenticationFailed()));
+                    } else {
+                        emitter.onNext(AuthenticationResponse.success(authenticationRequest.getIdentity().toString(), roles));
+                        emitter.onComplete();
+                    }
                 } else {
-                    emitter.onNext(AuthenticationResponse.success(authenticationRequest.getIdentity().toString(), roles));
-                    emitter.onComplete();
+                    emitter.onError(new AuthenticationException(new AuthenticationFailed()));
                 }
             } else {
                 emitter.onError(new AuthenticationException(new AuthenticationFailed()));

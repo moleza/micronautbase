@@ -37,8 +37,6 @@ public class User {
     @NotBlank
     @NotNull
     private String surname;
-    @Column(length = 50, columnDefinition = "VARCHAR(50)", unique = true)
-    private String business;
     @Email
     @NotNull
     @Column(unique=true)
@@ -56,6 +54,4 @@ public class User {
     @NotNull
     @Column(columnDefinition = "int default 0")
     private Integer level;
-    @Column(length = 50, columnDefinition = "VARCHAR(255)")
-    private String roles;
 }

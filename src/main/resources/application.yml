@@ -40,3 +40,4 @@ datasources:
         username: ${DATABASE_USERNAME:root}
         password: ${DATABASE_PASSWORD:root}
         schema-generate: CREATE
+        dialect: MYSQL

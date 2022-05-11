@@ -15,9 +15,9 @@ import javax.crypto.spec.SecretKeySpec;
 public class Aes256 {
     
     // @Value("${micronaut.application.secretKey}")
-    // private static String secretKey;
+    // private String secretKey;
     // @Value("${micronaut.application.secretSalt}")
-    // private static String salt;
+    // private String salt;
     
     public static String encrypt(String strToEncrypt, String key, String salt) 
     {

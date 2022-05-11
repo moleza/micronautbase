@@ -1,6 +1,6 @@
 package com.mole.controller;
 
-import com.mole.utils.Aes256;
+import com.mole.utils.Argon2Encode;
 
 import io.micronaut.context.annotation.Value;
 import io.micronaut.http.MediaType;
@@ -13,16 +13,14 @@ import io.micronaut.security.rules.SecurityRule;
 @Secured(SecurityRule.IS_ANONYMOUS)
 public class HomeController {
 
-    @Value("${micronaut.application.secretKey}")
-    private String key;
-    @Value("${micronaut.application.secretSalt}")
-    private String salt;
+
 
     @Get(produces = MediaType.TEXT_PLAIN) 
     public String index() {
-        String pw = Aes256.encrypt("test",key,salt);
+        String pw = Argon2Encode.encrypt("test");
         System.out.println(pw);
-
+        Boolean check = Argon2Encode.verify(pw, "test");
+        System.out.println(check);
         return "Demo API"; 
     }
 }
