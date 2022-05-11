@@ -1,5 +1,6 @@
 package com.mole.controller;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,11 +13,14 @@ import com.mole.entity.UserProfileDTO;
 import com.mole.exceptions.NotFoundException;
 import com.mole.repository.UserProfileRepository;
 import com.mole.repository.UserRepository;
+import com.mole.utils.Aes256;
+import com.mole.utils.Aes256Gcm;
 import com.mole.utils.Argon2Encode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.micronaut.context.annotation.Value;
 import io.micronaut.data.model.Page;
 import io.micronaut.data.model.Pageable;
 import io.micronaut.http.HttpResponse;
@@ -37,6 +41,9 @@ public class UserController {
     private final UserRepository repository;
     private final UserProfileRepository repositoryUserProfile;
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
+    @Value("${micronaut.application.secretAesGcm}")
+    private String secretAesGcm;
 
     @Secured({ "ADMIN" })
     @Get
@@ -264,6 +271,69 @@ public class UserController {
         Map<String, String> result = new HashMap<String, String>();
         Optional<User> userDB = repository.findByEmail(email);
         userDB.ifPresentOrElse(u -> {
+            result.put("status", "found");
+        }, () -> {
+            result.put("status", "notfound");
+        });
+
+        if (result.get("status") == "found") {
+            return "true";
+        } else {
+            return "false";
+        }
+        
+    }
+
+    @Secured(SecurityRule.IS_ANONYMOUS)
+    @Post("/forgot/send")
+    public String forgetSend(@Body String email) {
+        email = email.replaceAll("\"", "");
+        String emailDecrypt = Aes256Gcm.decrypt(email, secretAesGcm);
+        Map<String, String> result = new HashMap<String, String>();
+        Optional<User> userDB = repository.findByEmail(emailDecrypt);
+        userDB.ifPresentOrElse(u -> {
+
+            String strToEncrypt = "";
+            Instant i = Instant.now();
+            String time = String.valueOf(i.toEpochMilli());
+            strToEncrypt = u.getName()+"|"+u.getSurname()+"|"+u.getEmail()+"|"+time;
+
+            String sendString = Aes256Gcm.encrypt(strToEncrypt, secretAesGcm);
+
+            log.info(sendString);
+
+            // TODO: Send Forgot Password Email
+            result.put("status", "found");
+        }, () -> {
+            result.put("status", "notfound");
+        });
+
+        if (result.get("status") == "found") {
+            return "true";
+        } else {
+            return "false";
+        }
+        
+    }
+
+    @Secured(SecurityRule.IS_ANONYMOUS)
+    @Post("/forgot/update")
+    public String forgetUpdate(@Body String email) {
+        email = email.replaceAll("\"", "");
+        Map<String, String> result = new HashMap<String, String>();
+        Optional<User> userDB = repository.findByEmail(email);
+        userDB.ifPresentOrElse(u -> {
+
+            String strToEncrypt = "";
+            Instant i = Instant.now();
+            String time = String.valueOf(i.toEpochMilli());
+            strToEncrypt = u.getName()+"|"+u.getSurname()+"|"+u.getEmail()+"|"+time;
+
+            String sendString = Aes256Gcm.encrypt(strToEncrypt, secretAesGcm);
+
+            log.info(sendString);
+
+            // TODO: Send Forgot Password Email
             result.put("status", "found");
         }, () -> {
             result.put("status", "notfound");

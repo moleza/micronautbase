@@ -7,6 +7,7 @@ micronaut:
         name: micronautbase
         secretKey: ${SECRET_KEY:`ChangeSecretKey!`}
         secretSalt: ${SECRET_SALT:`ChangeSecretSalt!@`}
+        secretAesGcm: ${SECRET_AES_GCM:`12345678901234567890123456789012`}
     security:
         reject-not-found: true
         enabled: true
