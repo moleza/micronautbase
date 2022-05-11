@@ -9,8 +9,6 @@ import com.mole.entity.User;
 import com.mole.repository.UserRepository;
 
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.micronaut.http.HttpRequest;
 import io.micronaut.security.authentication.AuthenticationException;
@@ -31,7 +29,7 @@ public class AuthenticationProviderUserPassword implements AuthenticationProvide
 
     @Inject
     private final UserRepository userRepo;
-    private static final Logger log = LoggerFactory.getLogger(AuthenticationProviderUserPassword.class);
+    // private static final Logger log = LoggerFactory.getLogger(AuthenticationProviderUserPassword.class);
 
     @Override
     public Publisher<AuthenticationResponse> authenticate(@Nullable HttpRequest<?> httpRequest, AuthenticationRequest<?, ?> authenticationRequest) {
