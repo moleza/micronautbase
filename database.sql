@@ -1,0 +1,4 @@
+CREATE TABLE user (id BIGINT PRIMARY KEY AUTO_INCREMENT,name VARCHAR(50),surname VARCHAR(50),email VARCHAR(255) NOT NULL,enabled boolean default true,password VARCHAR(100),level int default 0);
+CREATE TABLE user_profile (id BIGINT PRIMARY KEY AUTO_INCREMENT,user_id BIGINT,mobile VARCHAR(15),gender VARCHAR(7),birthdate DATE);
+CREATE TABLE global (id BIGINT PRIMARY KEY AUTO_INCREMENT,code VARCHAR(255) NOT NULL,text VARCHAR(255) NOT NULL,link VARCHAR(255),enabled boolean default true,date_created TIMESTAMP,date_updated TIMESTAMP);
+CREATE TABLE refresh_token_entity (id BIGINT PRIMARY KEY AUTO_INCREMENT,username VARCHAR(255) NOT NULL,refresh_token VARCHAR(255) NOT NULL,revoked boolean default false,date_created TIMESTAMP);
