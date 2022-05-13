@@ -1,19 +1,25 @@
 package com.mole.controller;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import javax.validation.constraints.Email;
+
 import com.mole.entity.User;
-import com.mole.entity.UserDTO;
 import com.mole.entity.UserProfile;
-import com.mole.entity.UserProfileDTO;
 import com.mole.exceptions.NotFoundException;
+import com.mole.records.ForgotUpdateRec;
+import com.mole.records.UserProfileRec;
+import com.mole.records.UserRec;
 import com.mole.repository.UserProfileRepository;
 import com.mole.repository.UserRepository;
-import com.mole.utils.Aes256;
 import com.mole.utils.Aes256Gcm;
 import com.mole.utils.Argon2Encode;
 
@@ -29,6 +35,8 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Post;
+import io.micronaut.scheduling.TaskExecutors;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.security.authentication.Authentication;
 import io.micronaut.security.rules.SecurityRule;
@@ -47,25 +55,29 @@ public class UserController {
 
     @Secured({ "ADMIN" })
     @Get
+    @ExecuteOn(TaskExecutors.IO)
     public Page<User> findAll(Pageable pageable) {
         return repository.findAll(pageable);
     }
 
     @Secured({ "ADMIN" })
     @Get("/{id}")
+    @ExecuteOn(TaskExecutors.IO)
     public User findById(@PathVariable long id) {
         return repository.findById(id).orElseThrow(() -> new NotFoundException(String.valueOf(id), "ID", "User"));
     }
 
     @Secured({ "ADMIN","USER","BUSINESS" })
     @Get("/email/{email}")
-    public UserDTO findByEmail(@PathVariable String email) {
+    @ExecuteOn(TaskExecutors.IO)
+    public UserRec findByEmail(@PathVariable String email) {
         return repository.findByEmailAndEnabled(email, true);
     }
 
     @Secured({ "ADMIN","USER" })
     @Post("/profile")
-    public HttpResponse<Map<String, String>> updateCreate(@Body User user, @Body UserProfileDTO profile, Authentication authentication) {
+    @ExecuteOn(TaskExecutors.IO)
+    public HttpResponse<Map<String, String>> updateCreate(@Body User user, @Body UserProfileRec profile, Authentication authentication) {
         try {
             Map<String, String> result = new HashMap<String, String>();
             // log.info(profile.toString());
@@ -118,6 +130,7 @@ public class UserController {
 
     @Secured({ "ADMIN","USER" })
     @Get("/profile")
+    @ExecuteOn(TaskExecutors.IO)
     public HttpResponse<UserProfile> getProfile(Authentication authentication) {
         try {
             Optional<User> userDB = repository.findByEmail(authentication.getName());
@@ -139,6 +152,7 @@ public class UserController {
 
     @Secured({ "ADMIN" })
     @Post("/update")
+    @ExecuteOn(TaskExecutors.IO)
     public HttpResponse<Map<String, String>> update(@Body User user) {
         try {
             Map<String, String> result = new HashMap<String, String>();
@@ -197,18 +211,18 @@ public class UserController {
     //     }
     // }
 
-    private UserProfile mergeProfiles(UserProfile userProfile, UserProfileDTO profile) {
+    private UserProfile mergeProfiles(UserProfile userProfile, UserProfileRec profile) {
 
-        if (profile.getMobile() != null) {
-            userProfile.setMobile(profile.getMobile());
+        if (profile.mobile() != null) {
+            userProfile.setMobile(profile.mobile());
         }
 
-        if (profile.getGender() != null) {
-            userProfile.setGender(profile.getGender());
+        if (profile.gender() != null) {
+            userProfile.setGender(profile.gender());
         }
 
-        if (profile.getBirthdate() != null) {
-            userProfile.setBirthdate(LocalDate.parse(profile.getBirthdate()));
+        if (profile.birthdate() != null) {
+            userProfile.setBirthdate(LocalDate.parse(profile.birthdate()));
         }
 
         return userProfile;
@@ -216,6 +230,7 @@ public class UserController {
 
     @Secured(SecurityRule.IS_ANONYMOUS)
     @Post("/register")
+    @ExecuteOn(TaskExecutors.IO)
     public HttpResponse<Map<String, String>> register(@Body User user) {
         // log.info(user.toString());
         Map<String, String> result = new HashMap<String, String>();
@@ -266,84 +281,94 @@ public class UserController {
 
     @Secured(SecurityRule.IS_ANONYMOUS)
     @Post("/email/check")
-    public String emailCheck(@Body String email) {
-        email = email.replaceAll("\"", "");
+    @ExecuteOn(TaskExecutors.IO)
+    public HttpResponse<Map<String, String>> emailCheck(@Body @Email String email) {
         Map<String, String> result = new HashMap<String, String>();
-        Optional<User> userDB = repository.findByEmail(email);
-        userDB.ifPresentOrElse(u -> {
-            result.put("status", "found");
-        }, () -> {
-            result.put("status", "notfound");
-        });
+        try {
+            email = email.replaceAll("\"", "");
+            Optional<User> userDB = repository.findByEmail(email);
+            userDB.ifPresentOrElse(u -> {
+                result.put("status", "found");
+            }, () -> {
+                result.put("status", "notfound");
+            });
 
-        if (result.get("status") == "found") {
-            return "true";
-        } else {
-            return "false";
-        }
+            return HttpResponse.ok(result);
         
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("status", "error");
+            return HttpResponse.serverError(result);
+        }
     }
 
     @Secured(SecurityRule.IS_ANONYMOUS)
     @Post("/forgot/send")
-    public String forgetSend(@Body String email) {
-        email = email.replaceAll("\"", "");
-        String emailDecrypt = Aes256Gcm.decrypt(email, secretAesGcm);
+    @ExecuteOn(TaskExecutors.IO)
+    public HttpResponse<Map<String, String>> forgetSend(@Body String email) {
         Map<String, String> result = new HashMap<String, String>();
-        Optional<User> userDB = repository.findByEmail(emailDecrypt);
-        userDB.ifPresentOrElse(u -> {
+        try {
+            email = email.replaceAll("\"", "");
+            String emailDecrypt = Aes256Gcm.decrypt(email, secretAesGcm);
+            Optional<User> userDB = repository.findByEmail(emailDecrypt);
+            userDB.ifPresentOrElse(u -> {
 
-            String strToEncrypt = "";
-            Instant i = Instant.now();
-            String time = String.valueOf(i.toEpochMilli());
-            strToEncrypt = u.getName()+"|"+u.getSurname()+"|"+u.getEmail()+"|"+time;
+                String strToEncrypt = "";
+                Instant i = Instant.now();
+                String time = String.valueOf(i.toEpochMilli());
+                strToEncrypt = u.getName()+"|"+u.getSurname()+"|"+u.getEmail()+"|"+time;
 
-            String sendString = Aes256Gcm.encrypt(strToEncrypt, secretAesGcm);
+                String sendString = Base64.getUrlEncoder().encodeToString(Aes256Gcm.encrypt(strToEncrypt, secretAesGcm).getBytes());
 
-            log.info(sendString);
+                log.info(sendString);
 
-            // TODO: Send Forgot Password Email
-            result.put("status", "found");
-        }, () -> {
-            result.put("status", "notfound");
-        });
+                // TODO: Send Forgot Password Email
 
-        if (result.get("status") == "found") {
-            return "true";
-        } else {
-            return "false";
+                result.put("status", "success");
+            }, () -> {
+                result.put("status", "notfound");
+            });
+
+            return HttpResponse.ok(result);
+        
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("status", "error");
+            return HttpResponse.serverError(result);
         }
         
     }
 
     @Secured(SecurityRule.IS_ANONYMOUS)
     @Post("/forgot/update")
-    public String forgetUpdate(@Body String email) {
-        email = email.replaceAll("\"", "");
+    @ExecuteOn(TaskExecutors.IO)
+    public HttpResponse<Map<String, String>> forgetUpdate(@Body ForgotUpdateRec forgetUpdate) {
         Map<String, String> result = new HashMap<String, String>();
-        Optional<User> userDB = repository.findByEmail(email);
-        userDB.ifPresentOrElse(u -> {
+        try {
+            String[] decryptToken = Aes256Gcm.decrypt(new String(Base64.getUrlDecoder().decode(forgetUpdate.token().getBytes())), secretAesGcm).split("\\|");
+            LocalDate dateCheck = LocalDate.ofEpochDay(Duration.ofMillis(Long.parseLong(decryptToken[3])).toDays());
+            long days = ChronoUnit.DAYS.between(dateCheck, LocalDate.now());
+            if (days < 7 && String.valueOf(decryptToken[2]).equals(String.valueOf(forgetUpdate.email()))) {
+                Optional<User> userDB = repository.findByEmail(forgetUpdate.email());
+                userDB.ifPresentOrElse(u -> {
+                    u.setPassword(Argon2Encode.encrypt(forgetUpdate.password()));
+                    repository.update(u);
+                    result.put("status", "success");
+                }, () -> {
+                    result.put("status", "notfound");
+                });
 
-            String strToEncrypt = "";
-            Instant i = Instant.now();
-            String time = String.valueOf(i.toEpochMilli());
-            strToEncrypt = u.getName()+"|"+u.getSurname()+"|"+u.getEmail()+"|"+time;
-
-            String sendString = Aes256Gcm.encrypt(strToEncrypt, secretAesGcm);
-
-            log.info(sendString);
-
-            // TODO: Send Forgot Password Email
-            result.put("status", "found");
-        }, () -> {
-            result.put("status", "notfound");
-        });
-
-        if (result.get("status") == "found") {
-            return "true";
-        } else {
-            return "false";
+                return HttpResponse.ok(result);
+            } else {
+                result.put("status", "expired");
+                return HttpResponse.ok(result);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("status", "error");
+            return HttpResponse.serverError(result);
         }
-        
     }
+
+    
 }
