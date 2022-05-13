@@ -19,6 +19,8 @@ public class HomeController {
         // System.out.println(check);
         String pw = Aes256Gcm.encrypt("sheldon@mole.co.za","12345678901234567890123456789012");
         System.out.println(pw);
+        String pw2 = Aes256Gcm.decrypt("T0tyOUYrSUtRRlBncHp2Uw:amdIbUV4VlpRbzVlY2hucHpLOGd1ZWFu:NDhpdVczcHF3ZGV1TE0wZ3l2eTJKdz09","12345678901234567890123456789012");
+        System.out.println(pw2);
         return "Demo API"; 
     }
 }

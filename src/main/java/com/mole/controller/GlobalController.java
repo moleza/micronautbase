@@ -3,13 +3,15 @@ package com.mole.controller;
 import java.util.List;
 
 import com.mole.entity.Global;
-import com.mole.entity.GlobalIdTextDTO;
 import com.mole.exceptions.NotFoundException;
+import com.mole.records.GlobalIdTextRec;
 import com.mole.repository.GlobalRepository;
 
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.PathVariable;
+import io.micronaut.scheduling.TaskExecutors;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.security.rules.SecurityRule;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +24,15 @@ public class GlobalController {
 
     @Secured({ "ADMIN","USER" })
     @Get("/{id}")
+    @ExecuteOn(TaskExecutors.IO)
     public Global findById(@PathVariable long id) {
         return repositoryGlobal.findById(id).orElseThrow(() -> new NotFoundException(String.valueOf(id), "ID", "Global"));
     }
 
     @Secured({ "ADMIN","USER" })
     @Get("/code/{code}")
-    public List<GlobalIdTextDTO> findByCodeAndEnabled(@PathVariable String code) {
+    @ExecuteOn(TaskExecutors.IO)
+    public List<GlobalIdTextRec> findByCodeAndEnabled(@PathVariable String code) {
         return repositoryGlobal.findAllByCodeAndEnabled(code, true);
     }
 }

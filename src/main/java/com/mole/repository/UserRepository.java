@@ -3,7 +3,7 @@ package com.mole.repository;
 import java.util.Optional;
 
 import com.mole.entity.User;
-import com.mole.entity.UserDTO;
+import com.mole.records.UserRec;
 
 import io.micronaut.data.jdbc.annotation.JdbcRepository;
 import io.micronaut.data.model.Page;
@@ -15,7 +15,7 @@ import io.micronaut.data.repository.CrudRepository;
 public interface UserRepository extends CrudRepository<User, Long> {
     Optional<User> findByEmailAndPasswordAndEnabled(String email, String password, Boolean enabled);
     Optional<User> findByEmailAndEnabledAndLevelIsNotNull(String email, Boolean enabled);
-    UserDTO findByEmailAndEnabled(String email, Boolean enabled);
+    UserRec findByEmailAndEnabled(String email, Boolean enabled);
     Page<User> findAll(Pageable pageable);
     Optional<User> findByEmail(String email);
     Optional<User> findById(Long id);
