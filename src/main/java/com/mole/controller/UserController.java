@@ -16,6 +16,7 @@ import com.mole.entity.User;
 import com.mole.entity.UserProfile;
 import com.mole.exceptions.NotFoundException;
 import com.mole.records.ForgotUpdateRec;
+import com.mole.records.UpdatePasswordRec;
 import com.mole.records.UserProfileRec;
 import com.mole.records.UserRec;
 import com.mole.repository.UserProfileRepository;
@@ -72,6 +73,13 @@ public class UserController {
     @ExecuteOn(TaskExecutors.IO)
     public UserRec findByEmail(@PathVariable String email) {
         return repository.findByEmailAndEnabled(email, true);
+    }
+
+    @Secured({ "ADMIN","USER","BUSINESS" })
+    @Get("/info")
+    @ExecuteOn(TaskExecutors.IO)
+    public UserRec findByAuth(Authentication authentication) {
+        return repository.findByEmailAndEnabled(authentication.getName(), true);
     }
 
     @Secured({ "ADMIN","USER" })
@@ -345,13 +353,13 @@ public class UserController {
     public HttpResponse<Map<String, String>> forgetUpdate(@Body ForgotUpdateRec forgetUpdate) {
         Map<String, String> result = new HashMap<String, String>();
         try {
-            String[] decryptToken = Aes256Gcm.decrypt(new String(Base64.getUrlDecoder().decode(forgetUpdate.token().getBytes())), secretAesGcm).split("\\|");
+            String[] decryptToken = Aes256Gcm.decrypt(forgetUpdate.token(), secretAesGcm).split("\\|");
             LocalDate dateCheck = LocalDate.ofEpochDay(Duration.ofMillis(Long.parseLong(decryptToken[3])).toDays());
             long days = ChronoUnit.DAYS.between(dateCheck, LocalDate.now());
             if (days < 7 && String.valueOf(decryptToken[2]).equals(String.valueOf(forgetUpdate.email()))) {
                 Optional<User> userDB = repository.findByEmail(forgetUpdate.email());
                 userDB.ifPresentOrElse(u -> {
-                    u.setPassword(Argon2Encode.encrypt(forgetUpdate.password()));
+                    u.setPassword(Argon2Encode.encrypt(Aes256Gcm.decrypt(forgetUpdate.password(),secretAesGcm)));
                     repository.update(u);
                     result.put("status", "success");
                 }, () -> {
@@ -363,6 +371,36 @@ public class UserController {
                 result.put("status", "expired");
                 return HttpResponse.ok(result);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("status", "error");
+            return HttpResponse.serverError(result);
+        }
+    }
+
+    @Secured({ "ADMIN","USER","BUSINESS" })
+    @Post("/password")
+    @ExecuteOn(TaskExecutors.IO)
+    public HttpResponse<Map<String, String>> updatePassword(@Body UpdatePasswordRec updatePassword, Authentication authentication) {
+        Map<String, String> result = new HashMap<String, String>();
+        try {
+            Optional<User> userDB = repository.findByEmail(authentication.getName());
+            userDB.ifPresentOrElse(u -> {
+                String oldpassword = Aes256Gcm.decrypt(updatePassword.oldpassword(), secretAesGcm);
+                if (Argon2Encode.verify(u.getPassword(), oldpassword)) {
+                    String newpassword = Aes256Gcm.decrypt(updatePassword.newpassword(), secretAesGcm);
+                    u.setPassword(Argon2Encode.encrypt(newpassword));
+                    repository.update(u);
+                    result.put("status", "success");
+                } else {
+                    result.put("status", "mismatch");
+                }
+            }, () -> {
+                result.put("status", "notfound");
+            });
+
+            return HttpResponse.ok(result);
+            
         } catch (Exception e) {
             e.printStackTrace();
             result.put("status", "error");
