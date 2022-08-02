@@ -193,14 +193,6 @@ if "$cygwin" || "$msys" ; then
     done
 fi
 
-# Local .env
-# if [ -f .env ]; then
-#     # Load Environment Variables
-#     export $(cat .env | grep -v '#' | awk '/=/ {print $1}')
-#     # For instance, will be example_kaggle_key
-#     echo $DATABASE_URL
-# fi
-
 # Collect all arguments for the java command;
 #   * $DEFAULT_JVM_OPTS, $JAVA_OPTS, and $GRADLE_OPTS can contain fragments of
 #     shell script including quotes and variable substitutions, so put them in
